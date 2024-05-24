@@ -1,0 +1,10 @@
+.ipynb_checkpoints
+*.pyc
+*.pyc
+__pycache__
+*sif
+.nextflow*
+tmp/
+work/
+.DS_Store
+05-results

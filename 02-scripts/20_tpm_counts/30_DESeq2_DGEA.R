@@ -42,6 +42,19 @@ library(IHW)
 library(limma)
 })
 
+count_mat <- read_csv("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/counts_intestine.csv")
+colnames(count_mat)[1] <- "gene_id"
+colData <- read_csv("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/coldata_intestine.csv")
+colData <- colData[,-c(1)]
+sample_col="sequencingID"
+cond_col="sample_type"
+covariate_formula=""
+c1="ad.lib.Ctrl"
+c2="CR.Ctrl"
+
+n_cpus=8
+
+
 # Load parameters
 prefix <- arguments$prefix
 count_mat <- read_csv(arguments$count_mat)
@@ -88,7 +101,6 @@ if(sum2zero) {
 dds <- DESeqDataSetFromMatrix(
   countData = countData,
   colData = colData,
-  rowData = rowData,
   design = design_formula
 )
 # define reference level (not really necessary when uisng contrasts)
@@ -101,6 +113,10 @@ dds <- estimateSizeFactors(dds)
 keep <- rowSums(counts(dds, normalized = TRUE) >= 10) >= 20
 dds <- dds[keep, ]
 #rownames(dds) <- rowData(dds)$GeneSymbol
+
+smallestGroupSize <- 3
+keep <- rowSums(counts(dds) >= 10) >= smallestGroupSize
+dds <- dds[keep,]
 
 # save normalized filtered count file
 #norm_mat <- counts(dds, normalized = TRUE) |> as_tibble(rownames = "gene_id")

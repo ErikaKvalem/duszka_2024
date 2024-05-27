@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
-'runDESeq2_ICBI.R
+'30_runDESeq2_ICBI.R
 
 Usage:
-  runDESeq2_ICBI.R <sample_sheet> <count_table> --result_dir=<res_dir> --c1=<c1> --c2=<c2> [options]
-  runDESeq2_ICBI.R --help
+  30_runDESeq2_ICBI.R <sample_sheet> <count_table> --result_dir=<res_dir> --c1=<c1> --c2=<c2> [options]
+  30_runDESeq2_ICBI.R --help
 
 Arguments:
   <sample_sheet>                CSV file with the sample annotations.
@@ -48,9 +48,7 @@ Optional options:
   --save_init_workspace         Save R workspace before analysis for manual step by step debugging [default: FALSE]
   --save_sessioninfo            Save R sessionInfo() to keep info about library version [default: TRUE]
 ' -> doc
-#install.packages("BiocManager")
 
-#BiocManager::install("biomaRt")
 
 library("conflicted")
 library("docopt")

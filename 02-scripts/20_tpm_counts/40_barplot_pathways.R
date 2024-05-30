@@ -43,156 +43,112 @@ library(anno_db, character.only = TRUE)
 
 
 require(data.table)
+ 
+data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/tmp/intestine_CR_Ctrl_GSEA_KEGG.tsv"))
+data_adlibNB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/tmp/intestine_adlibNB_GSEA_KEGG.tsv"))
+data_CR_NB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_NB/tmp/intestine_CR_NB_GSEA_KEGG.tsv"))
+data_NB<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/NB/tmp/intestine_NB_GSEA_KEGG.tsv"))
+data_CR_Ctrl$condition = "CR_Ctrl"
+data_adlibNB$condition = "adlib"
+data_CR_NB$condition = "CR_NB"
+data_NB$condition = "NB"
 
-data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/intestine_CR_Ctrl_IHWallGenes.tsv"))
-data_adlibNB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/intestine_adlibNB_IHWallGenes.tsv"))
-data_CR_NB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_NB/intestine_CR_NB_IHWallGenes.tsv"))
-data_NB<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/NB/intestine_NB_IHWallGenes.tsv"))
+total <- rbind(data_CR_Ctrl, data_adlibNB,data_CR_NB,data_NB)
+total$Description <- gsub("-.*", "", total$Description)
 
-
-data <- data_adlibNB
-ensg_to_desc = AnnotationDbi::select(get(anno_db), data$gene_id %>% unique(), keytype = gene_id_type, columns = c("SYMBOL")) %>%
-  distinct(across(!!gene_id_type), .keep_all = TRUE)
-
-#data  <- data |>
-#  left_join(ensg_to_desc, by = c("gene_id" = gene_id_type) ) |>
-#  rename(gene_name = SYMBOL) 
-
-
-##### Pathway enrichment analysis
-hgnc_to_entrez = AnnotationDbi::select(get(anno_db), data %>% pull("gene_name") %>% unique(), keytype="SYMBOL", columns=c("ENTREZID"))
-
-# full list with ENTREZIDs added
-data_entrez = data %>%  inner_join(hgnc_to_entrez, by=c("gene_name"="SYMBOL"))
-universe = data_entrez %>% pull("ENTREZID") %>% unique()
-
-
-# list of significant genes with ENTREZIDs added
-datasig_fc_entrez <- data %>%  inner_join(hgnc_to_entrez, by=c("gene_name"="SYMBOL"))
-de_foldchanges <- datasig_fc_entrez$log2FoldChange
-names(de_foldchanges) <- datasig_fc_entrez$ENTREZID
-
-
-
-## ORA
-ora_tests = list(
-  "KEGG" = function(genes, universe) {
-    enrichKEGG(
-      gene         = genes,
-      universe     = universe,
-      organism     = org_kegg,
-      pvalueCutoff = 0.05
-    )
-  },
-  "Reactome" = function(genes, universe) {
-    enrichPathway(
-      gene = genes,
-      organism = org_reactome,
-      universe = universe,
-      pvalueCutoff = 0.05,
-      readable = TRUE
-    )
-  },
-  "WikiPathway" = function(genes, universe) {
-    enrichWP(
-      gene = genes,
-      universe     = universe,
-      organism     = org_wp,
-      pvalueCutoff = 0.05
-    )
-  },
-  "GO_BP" = function(genes, universe) {
-    enrichGO(
-      gene = genes,
-      universe = universe,
-      keyType = "ENTREZID",
-      OrgDb = anno_db,
-      ont = "BP",
-      pAdjustMethod = "BH",
-      qvalueCutoff = 0.05,
-      minGSSize = 10
-    )
-  },
-  "GO_MF" = function(genes, universe) {
-    enrichGO(
-      gene = genes,
-      universe = universe,
-      keyType = "ENTREZID",
-      OrgDb = anno_db,
-      ont = "MF",
-      pAdjustMethod = "BH",
-      qvalueCutoff = 0.05,
-      minGSSize = 10
-    )
-  },
-  "GO_CC" = function(genes, universe) {
-    enrichGO(
-      gene = genes,
-      universe = universe,
-      keyType = "ENTREZID",
-      OrgDb = anno_db,
-      ont = "CC",
-      pAdjustMethod = "BH",
-      qvalueCutoff = 0.05,
-      minGSSize = 10
-    )
-  }
-)
-
-
-# Warmup GO database - work around https://github.com/YuLab-SMU/clusterProfiler/issues/207
-._ = enrichGO(universe[1], OrgDb = get(anno_db), keyType = "ENTREZID", ont = "BP", universe = universe)
-
-get_heatplot_dims <- function(p) {
-  nr_gene <- length(unique(p$data$Gene))
-  nr_cat <- length(unique(p$data$categoryID))
-  
-  hp_width = min(nr_gene * 0.25, 40)
-  hp_height = min(nr_cat * 0.25, 40)
-  
-  return(c(hp_width, hp_height))
-}
-
-
-ora_name="GO_BP" 
-message(paste0("Performing ", ora_name, " ORA-test..."))
-results_dir="/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/figures"
-prefix="facet_wrap"
-
-test_fun = ora_tests[[ora_name]]
-ora_res = test_fun(datasig_fc_entrez$ENTREZID, universe)
-#######################
-if (!is.null(ora_res)) {
-  ora_res = setReadable(ora_res, OrgDb = anno_db, keyType="ENTREZID")
-  res_tab = as_tibble(ora_res@result)
-  if (min(res_tab$p.adjust) < 0.05 & length(unique(res_tab$geneID)) > 1) {
-    # Change the orientation:Horizontal barplot plot
-  }  else {
-    message(paste0("Warning: No significant enrichment in ", ora_name, " ORA analysis. "))
-  
-  }
-else {
-    message(paste0("Warning: No gene can be mapped in ", ora_name, " ORA analysis. "))
-}
-}
-############################
-ora_res = setReadable(ora_res, OrgDb = anno_db, keyType="ENTREZID")
-res_tab = as_tibble(ora_res@result)
-write.csv(res_tab,paste0(results_dir,"/res_tab_adlibNB.csv"))
-
-CR_Ctrl_res <- read.csv("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/figures/res_tab_CR_Ctrl.csv")
-adlib_res <-  read.csv("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/figures/res_tab_CR_Ctrl.csv")
-CR_Ctrl_res$condition = "CR_Ctrl"
-adlib_res$condition = "adlib"
-total <- rbind(CR_Ctrl_res, adlib_res)
 conflicts_prefer(clusterProfiler::slice)
 filtered_data <- total %>%
   group_by(condition) %>%
-  slice(1:20)
-p <- ggplot(filtered_data, aes(x = Description, y = Count, fill = GeneRatio)) + 
+  slice(1:5)
+p <- ggplot(filtered_data, aes(x = Description, y = NES, fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(rows = vars(condition)) +  coord_flip()
+  facet_grid(rows = vars(condition)) +  
+  labs(x = "KEGG Pathways", color = "black")  + # Change the y-axis label to "Pathways"
+  coord_flip() 
 
-p
-p <- ggplot(filtered_data, aes(Count, Description)) + geom_point()
-p + facet_grid(rows = vars(condition))
+# Add continuous color scale
+p <- p + scale_fill_gradient(low = "blue", high = "red")
+# Customize color scale for condition
+
+# Add color to facet grid labels
+p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as desired
+
+# Print the plot
+print(p)
+
+# Save the plot as an image file (e.g., PNG)
+ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_KEGG_pathways_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+
+
+###################################################################
+data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/intestine_CR_Ctrl_ORA_GO_BP.tsv"))
+data_adlibNB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/intestine_adlibNB_ORA_GO_BP.tsv"))
+data_CR_NB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_NB/intestine_CR_NB_ORA_GO_BP.tsv"))
+data_NB<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/NB/intestine_NB_ORA_GO_BP.tsv"))
+data_CR_Ctrl$condition = "CR_Ctrl"
+data_adlibNB$condition = "adlib"
+data_CR_NB$condition = "CR_NB"
+data_NB$condition = "NB"
+
+total <- rbind(data_CR_Ctrl, data_adlibNB,data_CR_NB,data_NB)
+total$Description <- gsub("-.*", "", total$Description)
+
+conflicts_prefer(clusterProfiler::slice)
+filtered_data <- total %>%
+  group_by(condition) %>%
+  slice(1:5)
+p <- ggplot(filtered_data, aes(x = Description, y = Count, fill = p.adjust)) + 
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(condition)) +  
+  labs(x = "ORA GO BP", color = "black")  + # Change the y-axis label to "Pathways"
+  coord_flip() 
+
+# Add continuous color scale
+p <- p + scale_fill_gradient(low = "blue", high = "red")
+# Customize color scale for condition
+
+# Add color to facet grid labels
+p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as desired
+
+# Print the plot
+print(p)
+
+# Save the plot as an image file (e.g., PNG)
+ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_ORA_GO_BP_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+
+########################################################
+data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/intestine_CR_Ctrl_ORA_GO_CC.tsv"))
+data_adlibNB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/intestine_adlibNB_ORA_GO_CC.tsv"))
+data_CR_NB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_NB/intestine_CR_NB_ORA_GO_CC.tsv"))
+data_NB<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/NB/intestine_NB_ORA_GO_CC.tsv"))
+data_CR_Ctrl$condition = "CR_Ctrl"
+data_adlibNB$condition = "adlib"
+data_CR_NB$condition = "CR_NB"
+data_NB$condition = "NB"
+
+total <- rbind(data_CR_Ctrl, data_adlibNB,data_CR_NB,data_NB)
+total$Description <- gsub("-.*", "", total$Description)
+
+conflicts_prefer(clusterProfiler::slice)
+filtered_data <- total %>%
+  group_by(condition) %>%
+  slice(1:5)
+p <- ggplot(filtered_data, aes(x = Description, y = Count, fill = p.adjust)) + 
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(condition)) +  
+  labs(x = "ORA GO CC", color = "black")  + # Change the y-axis label to "Pathways"
+  coord_flip() 
+
+# Add continuous color scale
+p <- p + scale_fill_gradient(low = "blue", high = "red")
+# Customize color scale for condition
+
+# Add color to facet grid labels
+p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as desired
+
+# Print the plot
+print(p)
+
+# Save the plot as an image file (e.g., PNG)
+ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_ORA_GO_CC_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+

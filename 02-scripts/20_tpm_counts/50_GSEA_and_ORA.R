@@ -44,7 +44,8 @@ library(anno_db, character.only = TRUE)
 
 require(data.table)
 
-data<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/intestine_adlibNB_IHWallGenes.tsv"))
+#I have changed the paths for adlibNB, CR_Ctrl, CR_NB, NB, and run the script several times 
+data<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/adlibNB/liver_adlibNB_IHWallGenes.tsv"))
 colnames(data)[colnames(data) == "gene_id"] <- "ensembl_gene_id"
 
 ensg_to_desc = AnnotationDbi::select(get(anno_db), data$ensembl_gene_id %>% unique(), keytype = gene_id_type, columns = c("SYMBOL")) %>%
@@ -151,8 +152,8 @@ get_heatplot_dims <- function(p) {
 
 bplapply(names(ora_tests), function(ora_name) {
   message(paste0("Performing ", ora_name, " ORA-test..."))
-  results_dir="/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/tmp"
-  prefix="intestine_adlibNB"
+  results_dir="/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/adlibNB/GSEA"
+  prefix="liver_adlibNB"
   
   test_fun = ora_tests[[ora_name]]
   ora_res = test_fun(datasig_fc_entrez$ENTREZID, universe)
@@ -204,8 +205,8 @@ save_plot <- function(filename, p, width=NULL, height=NULL) {
 skip_gsea=FALSE
 
 if(!skip_gsea) {
-  results_dir="/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/tmp"
-  prefix="intestine_adlibNB"
+  results_dir="/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/adlibNB/GSEA"
+  prefix="liver_adlibNB"
   # for GSEA use genes ranked by test statistic
   res_ihw_ranked = data_entrez %>%
     arrange(-stat) %>%

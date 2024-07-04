@@ -83,7 +83,37 @@ colnames(gene_symbols)[2] <- "gene_name"
 
 # Merge the gene symbols with the original dataframe 'counts'
 count_mat <- merge(count_mat, gene_symbols, by.x = "gene_id", by.y = "gene_id", all.x = TRUE)
+
+filtered_count_mat <- count_mat %>%
+  filter(gene_name %in% df_separate$geneID)
+
+filtered_count_mat <- filtered_count_mat %>%
+  column_to_rownames(var = "gene_name")
+
+data <- as.matrix(filtered_count_mat)
+data <- data[,-1]
+
+data<- data[, c(  "hAO_r1_ctrl",  "hAO_r2_ctrl",  "hAO_r3_ctrl",  "hAO_r4_ctrl", "hAO_r1_inf","hAO_r2_inf", "hAO_r3_inf",  "hAO_r4_inf" )]
+
+data %>% data.frame() %>% mutate(across(where(is.character), as.numeric)) %>% as.matrix() -> data_num #Convert all characters to nber
+data_norm <-  t(scale(t(data_num))) # Apply across all rows (1) the Z-score function (Substract mean and divide by sd)
+
+colnames(data_norm) <- sub("^X", "", colnames(data_norm))
+
+
+Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2),
+        show_row_dend=FALSE, show_column_dend = FALSE,
+    column_title = "set cell borders", 
+    cluster_row_slices=FALSE, 
+    cluster_column_slices=FALSE, 
+    column_order = colnames(data_norm),
+    column_split = allSampleAnno$sample_type)
 ```
+
+```{r}
+
+```
+
 
 ## Heatmap
 
@@ -118,6 +148,7 @@ data_norm_gene_name <- data_norm
 data_norm_gene_name <- data.frame(gene_name = row.names(data_norm_gene_name), data_norm_gene_name)
 
 ```
+
 
 ### Define color palette for the timepoints
 ```{r}

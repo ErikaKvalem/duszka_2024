@@ -103,14 +103,22 @@ colnames(data_norm) <- sub("^X", "", colnames(data_norm))
 
 Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2),
         show_row_dend=FALSE, show_column_dend = FALSE,
-    column_title = "set cell borders", 
     cluster_row_slices=FALSE, 
     cluster_column_slices=FALSE, 
     column_order = colnames(data_norm),
-    column_split = allSampleAnno$sample_type)
-```
+    column_title = c("ad.lib.Ctrl","ad.lib.NB", "CR.Ctrl", "CR.NB"),
+    row_split = split$DF.pathway,
+    column_split = allSampleAnno$sample_type, 
+     row_title_rot = 0)
 
-```{r}
+DF <- as.data.frame(data_norm)
+DF$gene_name <- rownames(DF)
+
+# Merge DF with df_separate based on gene_name (DF) and gene_ID (df_separate)
+DF <- merge(DF, df_separate, by.x = "gene_name", by.y = "geneID")
+# Reorder DF to maintain the order of rownames(data_norm)
+DF <- DF[match(rownames(data_norm), DF$gene_name), ]
+
 
 ```
 

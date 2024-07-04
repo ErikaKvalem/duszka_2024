@@ -44,6 +44,7 @@ library(anno_db, character.only = TRUE)
 
 require(data.table)
 ################### INTESTINE 
+resDir = "/data/projects/2024/duszka/NB_project/out/30_other_plots_130624/intestine_NB_WB/"
 ############################################################################### 
 data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/GSEA/intestine_CR_Ctrl_GSEA_KEGG.tsv"))
 data_adlibNB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/GSEA/intestine_adlibNB_GSEA_KEGG.tsv"))
@@ -70,11 +71,11 @@ total$Description <- gsub("- M.*", "", total$Description)
 
 p <- ggplot(total, aes(NES,Description,fill = NES)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "KEGG Pathways", color = "black") # Change the y-axis label to "Pathways"
 p2 <- ggplot(total, aes(NES,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "KEGG Pathways", color = "black") # Change the y-axis label to "Pathways"
 
 
@@ -91,9 +92,10 @@ print(p)
 print(p2)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_KEGG_pathways_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
 
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_KEGG_pathways_padjust_facet_grid.png", plot = p2, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"intestine_KEGG_pathways_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
+
+ggsave(paste0(resDir,"intestine_KEGG_pathways_padjust_facet_grid.png"), plot = p2, width = 8, height = 10)  # Adjust width and height as needed
 
 
 ###################################################################
@@ -107,22 +109,22 @@ data_CR_NB$condition = "CR_NB"
 data_NB$condition = "NB"
 
 
-data_CR_Ctrl <- data_CR_Ctrl %>%
-  filter(p.adjust < 0.05)
-data_adlibNB <- data_adlibNB %>%
-  filter(p.adjust < 0.05)
-data_CR_NB <- data_CR_NB %>%
-  filter(p.adjust < 0.05)
-data_NB <- data_NB %>%
-  filter(p.adjust < 0.05)
-
+#data_CR_Ctrl <- data_CR_Ctrl %>%
+#  filter(p.adjust < 0.05)
+#data_adlibNB <- data_adlibNB %>%
+#  filter(p.adjust < 0.05)
+#data_CR_NB <- data_CR_NB %>%
+#  filter(p.adjust < 0.05)
+#data_NB <- data_NB %>%
+#  filter(p.adjust < 0.05)
+#
 
 total <- rbind(head(data_CR_Ctrl),head(data_adlibNB),head(data_CR_NB),head(data_NB))
 total$Description <- gsub("- M.*", "", total$Description)
 
 p <- ggplot(total, aes(Count,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO BP", color = "black") # Change the y-axis label to "Pathways"
 
 
@@ -137,7 +139,7 @@ p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as 
 print(p)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_ORA_GO_BP_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"intestine_ORA_GO_BP_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
 
 ########################################################
 data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/CR_Ctrl/intestine_CR_Ctrl_ORA_GO_CC.tsv"))
@@ -156,7 +158,7 @@ total$Description <- gsub("- M.*", "", total$Description)
 
 p <- ggplot(total, aes(Count,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO CC", color = "black") # Change the y-axis label to "Pathways"
 
 
@@ -171,7 +173,7 @@ p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as 
 print(p)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_ORA_GO_CC_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"intestine_ORA_GO_CC_facet_grid.png"), plot = p, width = 6, height = 10)  # Adjust width and height as needed
 
 ################################################### INFLAMATION 
 
@@ -201,13 +203,13 @@ subset_df <- total[grepl("inflammatory ", total$Description, ignore.case = TRUE)
 # p plots counts and padjust 
 p <- ggplot(subset_df, aes(Count,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO BP", color = "black") # Change the y-axis label to "Pathways"
 
 #p2 plots gene ration , counts and padjust 
 p2 <- ggplot(subset_df, aes(GeneRatio,Description)) + 
   geom_point(aes(size = Count, colour = p.adjust)) +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO BP")  + # Change the y-axis label to "Pathways"
   scale_colour_gradient(low = "blue", high = "red")
 
@@ -224,10 +226,11 @@ p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as 
 print(p)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_ORA_GO_BP_inflammation_counts_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/intestine_ORA_GO_BP_inflammation_generatio_facet_grid.png", plot = p2, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"intestine_ORA_GO_BP_inflammation_counts_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"intestine_ORA_GO_BP_inflammation_generatio_facet_grid.png"), plot = p2, width = 8, height = 10)  # Adjust width and height as needed
 
 ################### LIVER
+resDir = "/data/projects/2024/duszka/NB_project/out/30_other_plots_130624/liver_NB_WB/"
 ############################################################################### 
 data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/CR_Ctrl/GSEA/liver_CR_Ctrl_GSEA_KEGG.tsv"))
 data_adlibNB <- as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/adlibNB/GSEA/liver_adlibNB_GSEA_KEGG.tsv"))
@@ -253,13 +256,13 @@ total$Description <- gsub("- M.*", "", total$Description)
 
 p <- ggplot(total, aes(NES,Description,fill = NES)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "KEGG Pathways", color = "black") # Change the y-axis label to "Pathways"
 
 
 p2 <- ggplot(total, aes(NES,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "KEGG Pathways", color = "black") # Change the y-axis label to "Pathways"
 
 
@@ -276,9 +279,9 @@ print(p)
 print(p2)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/liver_KEGG_pathways_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"liver_KEGG_pathways_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
 
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/liver_KEGG_pathways_padjust_facet_grid.png", plot = p2, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"liver_KEGG_pathways_padjust_facet_grid.png"), plot = p2, width = 8, height = 10)  # Adjust width and height as needed
 
 
 ###################################################################
@@ -291,21 +294,21 @@ data_adlibNB$condition = "adlib"
 data_CR_NB$condition = "CR_NB"
 data_NB$condition = "NB"
 
-data_CR_Ctrl <- data_CR_Ctrl %>%
-  filter(p.adjust < 0.05)
-data_adlibNB <- data_adlibNB %>%
-  filter(p.adjust < 0.05)
-data_CR_NB <- data_CR_NB %>%
-  filter(p.adjust < 0.05)
-data_NB <- data_NB %>%
-  filter(p.adjust < 0.05)
+#data_CR_Ctrl <- data_CR_Ctrl %>%
+#  filter(p.adjust < 0.05)
+#data_adlibNB <- data_adlibNB %>%
+#  filter(p.adjust < 0.05)
+#data_CR_NB <- data_CR_NB %>%
+#  filter(p.adjust < 0.05)
+#data_NB <- data_NB %>%
+#  filter(p.adjust < 0.05)
 
 total <- rbind(head(data_CR_Ctrl),head(data_adlibNB),head(data_CR_NB),head(data_NB))
 total$Description <- gsub("- M.*", "", total$Description)
 
 p <- ggplot(total, aes(Count,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO BP", color = "black") # Change the y-axis label to "Pathways"
 
 
@@ -320,7 +323,7 @@ p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as 
 print(p)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/liver_ORA_GO_BP_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"liver_ORA_GO_BP_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
 
 ########################################################
 data_CR_Ctrl<-as.data.frame(fread("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/CR_Ctrl/liver_CR_Ctrl_ORA_GO_CC.tsv"))
@@ -338,7 +341,7 @@ total$Description <- gsub("- M.*", "", total$Description)
 
 p <- ggplot(total, aes(Count,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO CC", color = "black") # Change the y-axis label to "Pathways"
 
 
@@ -353,7 +356,7 @@ p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as 
 print(p)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/liver_ORA_GO_CC_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"liver_ORA_GO_CC_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
 
 ################################################### INFLAMATION 
 
@@ -386,13 +389,13 @@ subset_df <- total[grepl("inflammatory ", total$Description, ignore.case = TRUE)
 # p plots counts and padjust 
 p <- ggplot(subset_df, aes(Count,Description,fill = p.adjust)) + 
   geom_bar(stat = "identity") +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO BP", color = "black") # Change the y-axis label to "Pathways"
 
 #p2 plots gene ration , counts and padjust 
 p2 <- ggplot(subset_df, aes(GeneRatio,Description)) + 
   geom_point(aes(size = Count, colour = p.adjust)) +
-  facet_grid(condition ~ .,scales = "free", space = "free") +  
+  facet_grid(condition ~ .,scales = "free_x", space = "free") +  
   labs(y = "ORA GO BP")  + # Change the y-axis label to "Pathways"
   scale_colour_gradient(low = "blue", high = "red")
 
@@ -409,5 +412,5 @@ p <- p + theme(strip.text.y = element_text(color = "black"))  # Adjust color as 
 print(p)
 
 # Save the plot as an image file (e.g., PNG)
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/liver_ORA_GO_BP_inflammation_counts_facet_grid.png", plot = p, width = 8, height = 10)  # Adjust width and height as needed
-ggsave("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/liver_ORA_GO_BP_inflammation_generatio_facet_grid.png", plot = p2, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"liver_ORA_GO_BP_inflammation_counts_facet_grid.png"), plot = p, width = 8, height = 10)  # Adjust width and height as needed
+ggsave(paste0(resDir,"liver_ORA_GO_BP_inflammation_generatio_facet_grid.png"), plot = p2, width = 8, height = 10)  # Adjust width and height as needed

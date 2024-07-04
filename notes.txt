@@ -1,0 +1,7 @@
+publish_dir_mode = "copy"
+log1p_cpm_input_path = ""
+gsea_input_path = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/GSEA/intestine_adlibNB_GSEA_KEGG.tsv"
+de_res_sig_fc_input_path = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/intestine_adlibNB_IHWsigFCgenes_2_fold.tsv"
+de_res_input_path = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/adlibNB/intestine_adlibNB_IHWallGenes.tsv"
+geneset_of_interest = []
+resDir                  = "/data/projects/2024/duszka/NB_project/out/30_other_plots_130624/tmp"

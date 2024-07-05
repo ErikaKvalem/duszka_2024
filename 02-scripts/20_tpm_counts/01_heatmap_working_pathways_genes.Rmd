@@ -26,6 +26,8 @@ origin="intestine_NB_WB" #liver_NB_WB
 origin_prefix="intestine" # liver
 condition="CR_Ctrl" #"CR_Ctrl" "CR_NB" "NB"
 
+comparison=c("CR.Ctrl", "ad.lib.Ctrl")
+
 
 df = read.csv(paste0(input_dir,origin,"/",condition,"/",origin_prefix,"_",condition,"_", "ORA_KEGG.tsv"), sep = "\t")
 df <- df %>%
@@ -90,10 +92,15 @@ filtered_count_mat <- count_mat %>%
 filtered_count_mat <- filtered_count_mat %>%
   column_to_rownames(var = "gene_name")
 
-data <- as.matrix(filtered_count_mat)
-data <- data[,-1]
+filtered_allSampleAnno <- allSampleAnno[allSampleAnno$sample_type %in% comparison, ]
+filtered_sequencingids <- filtered_allSampleAnno$sequencingID
+filtered_count_mat <- filtered_count_mat[, colnames(filtered_count_mat) %in% filtered_sequencingids]
 
-data<- data[, c(  "hAO_r1_ctrl",  "hAO_r2_ctrl",  "hAO_r3_ctrl",  "hAO_r4_ctrl", "hAO_r1_inf","hAO_r2_inf", "hAO_r3_inf",  "hAO_r4_inf" )]
+
+data <- as.matrix(filtered_count_mat)
+#data <- data[,-1]
+
+
 
 data %>% data.frame() %>% mutate(across(where(is.character), as.numeric)) %>% as.matrix() -> data_num #Convert all characters to nber
 data_norm <-  t(scale(t(data_num))) # Apply across all rows (1) the Z-score function (Substract mean and divide by sd)
@@ -101,15 +108,7 @@ data_norm <-  t(scale(t(data_num))) # Apply across all rows (1) the Z-score func
 colnames(data_norm) <- sub("^X", "", colnames(data_norm))
 
 
-Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2),
-        show_row_dend=FALSE, show_column_dend = FALSE,
-    cluster_row_slices=FALSE, 
-    cluster_column_slices=FALSE, 
-    column_order = colnames(data_norm),
-    column_title = c("ad.lib.Ctrl","ad.lib.NB", "CR.Ctrl", "CR.NB"),
-    row_split = split$DF.pathway,
-    column_split = allSampleAnno$sample_type, 
-     row_title_rot = 0)
+
 
 DF <- as.data.frame(data_norm)
 DF$gene_name <- rownames(DF)
@@ -119,9 +118,95 @@ DF <- merge(DF, df_separate, by.x = "gene_name", by.y = "geneID")
 # Reorder DF to maintain the order of rownames(data_norm)
 DF <- DF[match(rownames(data_norm), DF$gene_name), ]
 
+split = data.frame(DF$gene_name, DF$pathway)
+
+#############
+# 1. Calculate Pairwise Wilcoxon Tests and Adjust p-values
+comparison <- unique(filtered_allSampleAnno$sample_type)
+p_values <- matrix(nrow = nrow(data_norm), ncol = length(comparison))
+
+for (i in 1:nrow(data_norm)) {
+  for (j in 1:length(comparison)) {
+    group1 <- data_norm[i, filtered_allSampleAnno$sample_type == comparison[j]]
+    group2 <- data_norm[i, filtered_allSampleAnno$sample_type != comparison[j]]
+    p_values[i, j] <- wilcox.test(group1, group2, correct = TRUE)$p.value
+  }
+}
+
+
+# Adjust p-values
+#p_values_adj <- p.adjust(p_values, method = "BH")
+
+# 2. Create Annotation Heatmap with Color Scale and Stars
+significance <- ifelse(p_values < 0.001, "***",
+                       ifelse(p_values < 0.01, "**",
+                              ifelse(p_values < 0.05, "*", "")))
+
+annotation_data <- as.data.frame(p_values)
+rownames(annotation_data) <- rownames(data_norm)
+annotation_data = subset(annotation_data, select = -c(-V2) )
+colnames(annotation_data) <- paste0(comparison[1],"_vs_",comparison[2])
+
+# Convert p-values to a color scale
+annotation_colors <- colorRamp2(c(0, 0.05, 1), c("green", "yellow", "red"))
+
+# Create a heatmap for p-values
+annotation_heatmap <- Heatmap(annotation_data, name = "p-values",
+                              col = annotation_colors,
+                              cell_fun = function(j, i, x, y, width, height, fill) {
+                                grid.text(significance[i, j], x, y)
+                              },
+                              show_row_names = FALSE, show_column_names = TRUE,
+                              show_heatmap_legend = TRUE)
+
+main_heatmap <- Heatmap(data_norm, name = "z-score",
+                        rect_gp = gpar(col = "white", lwd = 2),
+                        show_row_dend = FALSE, show_column_dend = FALSE,
+                        cluster_row_slices = FALSE, cluster_column_slices = FALSE,
+                        column_order = colnames(data_norm),
+                        column_title = comparison,
+                        row_split = split$DF.pathway,
+                        column_split = filtered_allSampleAnno$sample_type,
+                        row_title_rot = 0)
+
+############
+
+
+#Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2),
+#        show_row_dend=FALSE, show_column_dend = FALSE,
+#    cluster_row_slices=FALSE, 
+#    cluster_column_slices=FALSE, 
+#    column_order = colnames(data_norm),
+#    column_title = comparison,
+#    row_split = split$DF.pathway,
+#    column_split =filtered_allSampleAnno$sample_type, 
+#     row_title_rot = 0)
+
+
 
 ```
 
+```{r}
+set.seed(123)
+pvalue = 10^-runif(10, min = 0, max = 3)
+is_sig = pvalue < 0.01
+pch = rep("*", 10)
+pch[!is_sig] = NA
+# color mapping for -log10(pvalue)
+pvalue_col_fun = colorRamp2(c(0, 2, 3), c("green", "white", "red")) 
+ha = HeatmapAnnotation(
+    pvalue = anno_simple(-log10(pvalue), col = pvalue_col_fun, pch = pch),
+    annotation_name_side = "left")
+ht = Heatmap(matrix(rnorm(100), 10), name = "mat", top_annotation = ha)
+# now we generate two legends, one for the p-value
+# see how we define the legend for pvalue
+lgd_pvalue = Legend(title = "p-value", col_fun = pvalue_col_fun, at = c(0, 1, 2, 3), 
+    labels = c("1", "0.1", "0.01", "0.001"))
+# and one for the significant p-values
+lgd_sig = Legend(pch = "*", type = "points", labels = "< 0.01")
+# these two self-defined legends are added to the plot by `annotation_legend_list`
+draw(ht, annotation_legend_list = list(lgd_pvalue, lgd_sig))
+```
 
 ## Heatmap
 
@@ -257,9 +342,7 @@ marker_expr <- data_norm_gene_name |>
 ```
 
 ```{r}
-
-
-get_marker_pval <- function(marker_expr, de_genes) {
+get_marker_pval <- function(marker_expr, de_genes){
   # make correctly ordered marker genes p.values
   marker_padj = (rownames(marker_expr) |> as_tibble() |> rename(gene_name = value)) |>
     left_join(de_genes) |>
@@ -329,9 +412,7 @@ sub_resdir = "/data/projects/2023/Pseudomonas_aeruginosa/20_deseq2icbi/tmp/sub_t
 
 #hm <- Heatmap(marker_expr ,
 #        na_col = "grey",
-#        column_title = modified_prefix,
-#     
-# 
+#        column_title = modified_prefix, 
 #        column_split = rev(condition),
 #        cluster_columns = FALSE,
 #        cluster_rows = FALSE,

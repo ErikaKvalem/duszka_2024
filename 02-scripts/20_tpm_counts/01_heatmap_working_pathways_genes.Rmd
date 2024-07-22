@@ -22,8 +22,8 @@ conflict_prefer("rename", "dplyr")
 
 ```{r}
 input_dir = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/"
-origin="intestine_NB_WB" #liver_NB_WB
-origin_prefix="intestine" # liver
+origin="liver_NB_WB" #liver_NB_WB
+origin_prefix="liver" # liver
 condition1="CR_Ctrl"
 condition2="adlibNB"
 condition3="CR_NB"
@@ -32,6 +32,8 @@ comparison1=c("CR.Ctrl", "ad.lib.Ctrl")
 comparison2=c("ad.lib.NB", "ad.lib.Ctrl")
 comparison3=c("CR.NB", "CR.Ctrl")
 comparison4=c("CR.NB", "ad.lib.NB")
+condition = condition4
+comparison = comparison4
 
 resDir = "/data/projects/2024/duszka/NB_project/out/30_tpm_counts_130624"
 plot_name = file.path(resDir, paste0(origin,"/heatmap/",origin_prefix,"_",condition, "_z-score_h"))
@@ -75,7 +77,7 @@ df_separate <- filtered_df %>%
   distinct(geneID, .keep_all = TRUE)
 
 sampleAnnotationCSV = paste0("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/coldata_",origin_prefix,".csv")
-readCountFile = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/counts_intestine.tsv"
+readCountFile = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/counts_liver.tsv"
 # filtrar los counts para los genes de interes 
 allSampleAnno <- read_csv(sampleAnnotationCSV)
 count_mat <- read_tsv(readCountFile)
@@ -117,9 +119,17 @@ colnames(data_norm) <- sub("^X", "", colnames(data_norm))
 
 DF <- as.data.frame(data_norm)
 DF$gene_name <- rownames(DF)
+###importdeg csv to merge 
+deg_df  <- read_tsv(paste0("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/",condition,"/",origin_prefix,"_",condition,"_IHWallGenes.tsv"))
 
 # Merge DF with df_separate based on gene_name (DF) and gene_ID (df_separate)
-DF <- merge(DF, df_separate, by.x = "gene_name", by.y = "geneID")
+DF <- merge(DF, deg_df, by.x = "gene_name", by.y = "gene_name")
+
+# Subset df_separate to include only geneID and pathway columns
+df_separate_subset <- df_separate[, c("geneID", "pathway")]
+
+# Merge the subset with DF on the specified columns
+DF <- merge(DF, df_separate_subset, by.x = "gene_name", by.y = "geneID", all.x = TRUE)
 # Reorder DF to maintain the order of rownames(data_norm)
 DF <- DF[match(rownames(data_norm), DF$gene_name), ]
 
@@ -128,14 +138,9 @@ split = data.frame(DF$gene_name, DF$pathway)
 #############
 # 1. Calculate Pairwise Wilcoxon Tests and Adjust p-values
 p_values <- matrix(nrow = nrow(data_norm), ncol = length(comparison))
+p_values <- DF$padj
 
-for (i in 1:nrow(data_norm)) {
-  for (j in 1:length(comparison)) {
-    group1 <- data_norm[i, filtered_allSampleAnno$sample_type == comparison[j]]
-    group2 <- data_norm[i, filtered_allSampleAnno$sample_type != comparison[j]]
-    p_values[i, j] <- wilcox.test(group1, group2, correct = TRUE)$p.value
-  }
-}
+
 
 
 # Adjust p-values
@@ -148,20 +153,19 @@ significance <- ifelse(p_values < 0.001, "***",
 
 annotation_data <- as.data.frame(p_values)
 rownames(annotation_data) <- rownames(data_norm)
-annotation_data = subset(annotation_data, select = -c(-V2) )
-colnames(annotation_data) <- paste0(comparison[2],"_vs_",comparison[1])
-colname = as.character(paste0(comparison[1],"_vs_",comparison[2]))
+
 # Convert p-values to a color scale
 pvalue = annotation_data[1]
-is_sig = pvalue < 0.01
+is_sig = pvalue < 0.001
 pch = rep("*", 10)
-pch[!is_sig] = NA
+pch <- c(ifelse(is_sig, "*", NA))
+#pch[!is_sig] = NA
 # color mapping for -log10(pvalue)
 pvalue_col_fun = colorRamp2(c(0, 1, 2), c("green", "white", "red")) 
  
 
 ha = rowAnnotation(
-  padj = anno_simple(-log10(pvalue),
+  padj = anno_simple(-log10(pvalue$p_values),
                      col = pvalue_col_fun,
                      pch = pch),
   gap = unit(1, "mm"))
@@ -169,10 +173,10 @@ ha = rowAnnotation(
 
 lgd_pvalue = Legend(title = "padj-value",
                     col_fun = pvalue_col_fun,
-                    at = c(0, 1, 2), 
-    labels = c("1", "0.1", "0.01"))
+                    at = c(0, 1, 2,3), 
+    labels = c("1",  "0.1","0.01","0.001"))
 # and one for the significant p-values
-lgd_sig = Legend(pch = "*", type = "points", labels = "< 0.01")
+lgd_sig = Legend(pch = "*", type = "points", labels = "< 0.001")
 # these two self-defined legends are added to the plot by `annotation_legend_list`
 
 ht = Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2),
@@ -223,6 +227,8 @@ save_plot = function(hm, filename, format = "all", res = 300) {
   }
 
 }
+
+
 
 
 save_plot(hz, plot_name, format = "all", res = 300)

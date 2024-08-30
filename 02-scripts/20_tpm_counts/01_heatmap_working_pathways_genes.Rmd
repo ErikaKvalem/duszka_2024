@@ -22,8 +22,8 @@ conflict_prefer("rename", "dplyr")
 
 ```{r}
 input_dir = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/"
-origin="liver_NB_WB" #liver_NB_WB
-origin_prefix="liver" # liver
+origin="intestine_NB_WB" #liver_NB_WB
+origin_prefix="intestine" # liver
 condition1="CR_Ctrl"
 condition2="adlibNB"
 condition3="CR_NB"
@@ -37,8 +37,9 @@ comparison = comparison4
 
 resDir = "/data/projects/2024/duszka/NB_project/out/30_tpm_counts_130624"
 plot_name = file.path(resDir, paste0(origin,"/heatmap/",origin_prefix,"_",condition, "_z-score_h"))
-
-df = read.csv(paste0(input_dir,origin,"/",condition,"/",origin_prefix,"_",condition,"_", "ORA_KEGG.tsv"), sep = "\t")
+path = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/"
+#df = read.csv(paste0(input_dir,origin,"/",condition,"/",origin_prefix,"_",condition,"_", "ORA_KEGG.tsv"), sep = "\t")
+df = read.csv(paste0(path, condition,"/",origin_prefix,"_",condition,"_", "ORA_KEGG.tsv"), sep = "\t")
 df <- df %>%
   mutate(geneID = gsub("/", ",", geneID))
 #filter 
@@ -77,7 +78,7 @@ df_separate <- filtered_df %>%
   distinct(geneID, .keep_all = TRUE)
 
 sampleAnnotationCSV = paste0("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/coldata_",origin_prefix,".csv")
-readCountFile = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/counts_liver.tsv"
+readCountFile = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/counts_intestine.tsv"
 # filtrar los counts para los genes de interes 
 allSampleAnno <- read_csv(sampleAnnotationCSV)
 count_mat <- read_tsv(readCountFile)
@@ -120,7 +121,7 @@ colnames(data_norm) <- sub("^X", "", colnames(data_norm))
 DF <- as.data.frame(data_norm)
 DF$gene_name <- rownames(DF)
 ###importdeg csv to merge 
-deg_df  <- read_tsv(paste0("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/liver_NB_WB/",condition,"/",origin_prefix,"_",condition,"_IHWallGenes.tsv"))
+deg_df  <- read_tsv(paste0("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/intestine_NB_WB/",condition,"/",origin_prefix,"_",condition,"_IHWallGenes.tsv"))
 
 # Merge DF with df_separate based on gene_name (DF) and gene_ID (df_separate)
 DF <- merge(DF, deg_df, by.x = "gene_name", by.y = "gene_name")
@@ -184,14 +185,14 @@ ht = Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2)
     cluster_row_slices=FALSE, 
     cluster_column_slices=FALSE, 
     column_order = colnames(data_norm),
-    column_title = comparison,
+    column_title = rev(comparison),
     row_split = split$DF.pathway,
     column_split =filtered_allSampleAnno$sample_type, 
      row_title_rot = 0, right_annotation = ha)
 
-
+ht
 hz <- draw(ht, annotation_legend_list = list(lgd_pvalue, lgd_sig))
-hz
+
 calc_ht_size = function(ht, unit = "inch") {
     pdf(NULL)
     ht = draw(ht)
@@ -203,7 +204,7 @@ calc_ht_size = function(ht, unit = "inch") {
 
     c(w, h)
 }
-
+ht
 save_plot = function(hm, filename, format = "all", res = 300) {
   
   hm_size = calc_ht_size(hm)

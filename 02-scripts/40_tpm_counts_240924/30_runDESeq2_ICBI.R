@@ -803,13 +803,18 @@ p <- EnhancedVolcano(resIHW,
                      x = "log2FoldChange",
                      y = "pvalue",
                      pCutoff = 1e-6,
+                     pointSize = 1.0,
+                     labSize = 4.0,
                      FCcutoff = fc_cutoff,
                      subtitle = "",
-                     legendPosition = "right",
+                     legendPosition = "top",
                      caption = paste0("fold change cutoff: ", round(2**fc_cutoff, 1), ", p-value cutoff: ", 1e-6),
-                     title = plot_title)
+                     title = plot_title,
+                     legendLabSize = 10,
+                     legendIconSize = 3.0,
+                     xlim = c(-6, 6))
 
-save_plot(file.path(results_dir, paste0(prefix, "_volcano")), p, width = 9, height = 7)
+save_plot(file.path(results_dir, paste0(prefix, "_volcano")), p, width = 7, height = 9)
 
 
 p <- EnhancedVolcano(resIHW,
@@ -817,13 +822,18 @@ p <- EnhancedVolcano(resIHW,
                      x = "log2FoldChange",
                      y = "padj",
                      pCutoff = fdr_cutoff,
+                     pointSize = 1.0,
+                     labSize = 4.0,
                      FCcutoff = fc_cutoff,
                      subtitle = "",
-                     legendPosition = "right",
+                     legendPosition = "top",
                      caption = paste0("fold change cutoff: ", round(2**fc_cutoff, 1), ", adj.p-value cutoff: ", fdr_cutoff),
-                     title = plot_title)
+                     title = plot_title,
+                     legendLabSize = 10,
+                     legendIconSize = 3.0,
+                     xlim = c(-6, 6))
 
-save_plot(file.path(results_dir, paste0(prefix, "_volcano_padj")), p, width = 9, height = 7)
+save_plot(file.path(results_dir, paste0(prefix, "_volcano_padj")), p, width = 7, height = 9)
 
 
 if(!is.null(genes_of_interest)) {
@@ -852,15 +862,20 @@ if(!is.null(genes_of_interest)) {
                          x = "log2FoldChange",
                          y = "padj",
                          pCutoff = fdr_cutoff,
+                         pointSize = 1.0,
+                         labSize = 4.0,
                          FCcutoff = fc_cutoff,
                          subtitle = "",
-                         legendPosition = "right",
-                         caption = paste0("fold change cutoff: ", round(2**fc_cutoff, 1), ", adj.p-value cutoff: ", fdr_cutoff),
+                         legendPosition = "top",
+                         caption = paste0("fold change cutoff: ", round(2**fc_cutoff, 1), ", HOLAadj.p-value cutoff: ", fdr_cutoff),
                          maxoverlapsConnectors = Inf,
-                         title = plot_title)
+                         title = plot_title,
+                         legendLabSize = 10,
+                         legendIconSize = 3.0,
+                         xlim = c(-6, 6))
     
     grp_fname = gsub("[^[:alnum:]]+", "_", grp)
-    save_plot(file.path(results_dir, paste0(prefix, "_", grp_fname, "_volcano_padj")), p, width = 9, height = 7)
+    save_plot(file.path(results_dir, paste0(prefix, "_", grp_fname, "_volcano_padj")), p, width = 7, height = 9)
     
     write_tsv(goi_data, file.path(results_dir, paste0(prefix, "_", grp_fname, ".tsv")))
     write_xlsx(goi_data, file.path(results_dir, paste0(prefix, "_" , grp_fname, ".xlsx")))

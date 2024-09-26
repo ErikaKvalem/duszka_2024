@@ -1,0 +1,221 @@
+---
+title: "01_heatmap_copy_2"
+output: html_document
+date: "2023-11-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(dplyr)
+library(tibble)
+library(readr)
+library(stringr)
+library(ComplexHeatmap)
+library(circlize)
+library(conflicted)
+conflict_prefer("filter", "dplyr")
+conflict_prefer("select", "dplyr")
+conflict_prefer("rename", "dplyr")
+require(biomaRt)
+#install.packages("Cairo")
+library(Cairo)
+library(readr)
+```
+
+
+```{r}
+input_dir = "/data/projects/2024/duszka/NB_project/out/40_tpm_counts_240924/"
+origin="intestine_NB_WB" #liver_NB_WB
+origin_prefix="intestine" # liver
+condition1="CR_Ctrl"
+condition2="adlibNB"
+condition3="CR_NB"
+condition4="NB"
+comparison1=c("CR.Ctrl", "ad.lib.Ctrl")
+comparison2=c("ad.lib.NB", "ad.lib.Ctrl")
+comparison3=c("CR.NB", "CR.Ctrl")
+comparison4=c("CR.NB", "ad.lib.NB")
+condition = condition1
+comparison = comparison1
+
+resDir = "/data/projects/2024/duszka/NB_project/out/40_tpm_counts_240924"
+plot_name = file.path(resDir, paste0(origin,"/heatmap/",origin_prefix,"_",condition, "_z-score_top50"))
+path = "/data/projects/2024/duszka/NB_project/out/40_tpm_counts_240924/intestine_NB_WB/"
+df = read.csv(paste0(path, condition,"/",origin_prefix,"_",condition,"_", "IHWallGenes.tsv"), sep = "\t")
+# Assuming your dataframe is called df and the padj column exists
+df <- df[order(df$padj), ][1:50, ]
+
+
+
+sampleAnnotationCSV = paste0("/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/coldata_",origin_prefix,".csv")
+readCountFile = "/data/projects/2024/duszka/NB_project/out/20_tpm_counts_260524/tables/counts_intestine.tsv"
+# filtrar los counts para los genes de interes 
+allSampleAnno <- read_csv(sampleAnnotationCSV)
+count_mat <- read_tsv(readCountFile)
+colnames(count_mat)[1] <- "gene_id"
+
+ensembl <- useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+ensembl_ids <- c(count_mat$gene_id) 
+gene_symbols <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
+                      filters = "ensembl_gene_id",
+                      values = ensembl_ids,
+                      mart = ensembl)
+colnames(gene_symbols)[1] <- "gene_id"
+colnames(gene_symbols)[2] <- "gene_name"
+
+# Merge the gene symbols with the original dataframe 'counts'
+count_mat <- merge(count_mat, gene_symbols, by.x = "gene_id", by.y = "gene_id", all.x = TRUE)
+
+
+filtered_count_mat <- count_mat %>%
+  filter(gene_name %in% df$gene_name)
+
+filtered_count_mat <- filtered_count_mat %>%
+  column_to_rownames(var = "gene_name")
+
+filtered_allSampleAnno <- allSampleAnno[allSampleAnno$sample_type %in% comparison, ]
+filtered_sequencingids <- filtered_allSampleAnno$sequencingID
+filtered_count_mat <- filtered_count_mat[, colnames(filtered_count_mat) %in% filtered_sequencingids]
+
+
+data <- as.matrix(filtered_count_mat)
+#data <- data[,-1]
+
+
+
+data %>% data.frame() %>% mutate(across(where(is.character), as.numeric)) %>% as.matrix() -> data_num #Convert all characters to nber
+data_norm <-  t(scale(t(data_num))) # Apply across all rows (1) the Z-score function (Substract mean and divide by sd)
+
+colnames(data_norm) <- sub("^X", "", colnames(data_norm))
+
+
+DF <- as.data.frame(data_norm)
+DF$gene_name <- rownames(DF)
+
+
+
+#############
+# 1. Calculate Pairwise Wilcoxon Tests and Adjust p-values
+p_values <- matrix(nrow = nrow(data_norm), ncol = length(comparison))
+p_values <- DF$padj
+
+
+
+
+# Adjust p-values
+#p_values_adj <- p.adjust(p_values, method = "BH")
+
+# 2. Create Annotation Heatmap with Color Scale and Stars
+significance <- ifelse(p_values < 0.001, "***",
+                       ifelse(p_values < 0.01, "**",
+                              ifelse(p_values < 0.05, "*", "")))
+
+annotation_data <- as.data.frame(p_values)
+# Subset data_norm to only keep rows where the rownames match the gene_name column in DF
+data_norm <- data_norm[rownames(data_norm) %in% DF$gene_name, ]
+
+#rownames(annotation_data) <- rownames(data_norm)
+
+# Convert p-values to a color scale
+#pvalue = annotation_data[1]
+#is_sig = pvalue < 0.001
+#pch = rep("*", 10)
+#pch <- c(ifelse(is_sig, "*", NA))
+#pch[!is_sig] = NA
+# color mapping for -log10(pvalue)
+#pvalue_col_fun = colorRamp2(c(0, 1, 2), c("green", "white", "red")) 
+ 
+
+#ha = rowAnnotation(
+ # padj = anno_simple(-log10(pvalue$p_values),
+  #                   col = pvalue_col_fun,
+   #                  pch = pch),
+  #gap = unit(1, "mm"))
+# Define the color function for the z-score: blue for low, orange for high, with a range from -3 to 3
+zscore_col_fun = colorRamp2(c(-3, 0, 3), c("blue", "white", "orange"))
+
+# Define the legend for the z-score
+lgd_zscore = Legend(title = "z-score", 
+                    col_fun = zscore_col_fun,  # Use the custom color function for the legend
+                    at = c(-3, 0, 3), 
+                    labels = c("-3", "0", "3"))
+
+#lgd_pvalue = Legend(title = "padj-value",
+ #                   col_fun = pvalue_col_fun,
+  #                  at = c(0, 1, 2,3), 
+  #  labels = c("1",  "0.1","0.01","0.001"))
+# and one for the significant p-values
+lgd_sig = Legend(pch = "*", type = "points", labels = "< 0.001")
+lgd_custom = Legend(labels = "padj < 0.05", type = "text") 
+# these two self-defined legends are added to the plot by `annotation_legend_list`
+
+ht = Heatmap(data_norm, name = "z-score", rect_gp = gpar(col = "white", lwd = 2),
+             col = zscore_col_fun,
+             show_row_dend=FALSE, show_column_dend = FALSE,
+    cluster_row_slices=FALSE, 
+    show_column_names = FALSE,
+    cluster_column_slices=FALSE, 
+    column_order = colnames(data_norm),
+    column_title = rev(comparison),
+    #row_split = split$DF.pathway,
+    column_split =filtered_allSampleAnno$sample_type, 
+     row_title_rot = 0, 
+     show_heatmap_legend = FALSE,
+   #right_annotation = ha,
+    row_names_gp = gpar(fontsize = 12),  # Adjust font size as needed
+        column_names_gp = gpar(fontsize = 8), #
+         width = ncol(data_norm)*unit(5, "mm"),
+    height = nrow(data_norm)*unit(5, "mm"))
+
+ht
+hz <- draw(ht,annotation_legend_list =list(lgd_custom,lgd_zscore),annotation_legend_side = "right",  legend_grouping = "original")
+
+
+
+calc_ht_size = function(ht, unit = "inch") {
+    pdf(NULL)
+    ht = draw(ht)
+    w = ComplexHeatmap:::width(ht)
+    w = convertX(w, unit, valueOnly = TRUE)
+    h = ComplexHeatmap:::height(ht)
+    h = convertY(h, unit, valueOnly = TRUE)
+    dev.off()
+
+    c(w, h)
+}
+ht
+save_plot = function(hm, filename, format = "all", res = 300) {
+  
+  hm_size = calc_ht_size(hm)
+  
+  if (format == "all" | format == "pdf") {
+    pdf(file = file.path(paste0(filename, ".pdf")), width = hm_size[1]*1.5, height = hm_size[2]*1.5, bg = "white")
+    draw(hm)
+    dev.off()
+  }
+
+  if (format == "all" | format == "png") {
+    png(filename = file.path(paste0(filename, ".png")), width = hm_size[1]*1.5, height = hm_size[2]*1.5, units = "in", res = res, bg = "white")
+    draw(hm)
+    dev.off()
+  }
+
+  if (format == "all" | format == "svg") {
+    svg(filename = file.path(paste0(filename, ".svg")), width = hm_size[1]*1.5, height = hm_size[2]*1.5, bg = "white")
+    draw(hm)
+    dev.off()
+  }
+
+}
+
+
+
+
+save_plot(hz, plot_name, format = "all", res = 300)
+```
+
+
+
+
+

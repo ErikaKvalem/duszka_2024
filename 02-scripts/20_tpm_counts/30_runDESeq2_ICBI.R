@@ -235,7 +235,7 @@ if (is.null(prefix)) {
   prefix = paste0(contrast[[2]], "_", contrast[[3]])
 }
 
-
+fdr_cutoff = 0.05
 allSampleAnno <- read_csv(sampleAnnotationCSV)
 allSampleAnno$sequencingID<-as.character(allSampleAnno$sequencingID)
 allSampleAnno <- allSampleAnno[,-c(1)]
@@ -556,7 +556,7 @@ de_res_list <- list(IHWallGenes = resIHW, IHWsigGenes = resIHWsig, IHWsigFCgenes
 
 #### write results to TSV and XLSX files
 lapply(names(de_res_list), function(res) {
-  fc_suffix <- ifelse(res == "IHWsigFCgenes", paste0("_", 2^fc_cutoff, "_fold"), "")
+  fc_suffix <- ifelse(res == "IHWsigFCgenes005", paste0("_", 2^fc_cutoff, "_fold"), "")
   write_tsv(de_res_list[[res]], file.path(results_dir, paste0(prefix, "_", res, fc_suffix, ".tsv")))
   write_xlsx(de_res_list[[res]], file.path(results_dir, paste0(prefix, "_" , res, fc_suffix, ".xlsx")))
 })

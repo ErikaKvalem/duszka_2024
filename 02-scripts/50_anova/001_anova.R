@@ -1,0 +1,70 @@
+# Anova testing - Kalina Duszka
+
+#Libraries
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+
+# Data loading 
+data <- read.csv("../tables/50_anova/SARA1.csv", check.names = FALSE, stringsAsFactors = FALSE) 
+# Data preprocessing 
+
+data <- data[rowSums(is.na(data))<=5, ] # there are NAs weird rows
+colnames(data) <- trimws(colnames(data))
+data_sub <- select(data, -external_gene_name, -description) # Remove all string columns 
+
+colnames(data) <- as.character(colnames(data)) # Make all the column names strings 
+colnames(data) <- trimws(colnames(data))  # Remove any extra spaces
+
+rownames(data_sub) <- data_sub$gene_id # Make the gene_id as index 
+data_sub <- select(data_sub, -gene_id) # remove this column 
+
+data_sub <- data_sub %>% mutate_all(as.numeric) # Convert all columns in data_sub to numeric IMPORTANT 
+# column_data_types <- sapply(data_sub, class) # Check the data types of each column after conversion
+
+data_sub <- rownames_to_column(data_sub, var = "gene_id") #Create again the column gene_id from the index 
+
+# Reshape the data from wide to long format
+data_long <- data_sub %>%
+  pivot_longer(
+    cols = -gene_id,   
+    names_to = "Sample",  
+    values_to = "Expression"
+  )
+
+#Create groups according to time point & R/S 
+data_long <- data_long %>%
+  mutate(
+    Group = ifelse(str_starts(Sample, "S"), "S", "R"),  
+    Time = as.factor(str_extract(Sample, "[0-9]+"))  
+  )
+
+data_long$Group <- as.factor(data_long$Group)
+data_long$Time <- as.factor(data_long$Time)
+data_long$gene_id <- as.factor(data_long$gene_id)
+
+
+################################################################################
+# Model ANOVA for all time points (2, 3, and 6) 
+model_all <- lmer(Expression ~ Time * Group + (1 | gene_id), data = data_long)
+anova(model_all)  
+summary(model_all)  
+
+# Pairwise comparisons of time point variable within each Group, showing which time points differ from each other.
+emmeans_result_all <- emmeans(model_all, pairwise ~ Time | Group)
+summary(emmeans_result_all) 
+
+################################################################################
+# Subset data for only time points 2 and 3 
+data_subset <- filter(data_long, Time %in% c("2", "3"))
+
+# Model ANOVA for time points 2 and 3
+model_2_3 <- lmer(Expression ~ Time * Group + (1 | gene_id), data = data_subset)
+anova(model_2_3)
+summary(model_2_3)
+
+# Pairwise comparisons of time point variable within each Group, showing which time points differ from each other.
+emmeans_result_2_3 <-  emmeans(model_2_3, pairwise ~ Time | Group)
+summary(emmeans_result_2_3) 
+
